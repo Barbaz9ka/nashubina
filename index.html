@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Что делать, когда тревожно — интерактивная тетрадь</title>
+<style>
+  :root{
+    --bg:#F7F2EA;
+    --surface:#FBF8F3;
+    --card:#EFE6D6;
+    --card-2:#F1E4D8;
+    --border:#E3D8C6;
+    --ink:#3B322A;
+    --ink-soft:#7D7263;
+    --accent:#C9713F;
+    --accent-dark:#A85A2E;
+    --accent-soft:#F3DFC9;
+    --blue:#3E7CA6;
+    --blue-soft:#DCEAF1;
+    --green:#5F9C74;
+    --green-soft:#E4F0E6;
+    --red:#C1594B;
+    --red-soft:#F6E1DC;
+    --radius:14px;
+    --serif: Georgia, 'Times New Roman', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.55; -webkit-font-smoothing:antialiased;}
+  a{color:var(--accent-dark);}
+
+  .login-overlay{position:fixed; inset:0; background:var(--bg); z-index:200; display:flex; align-items:center; justify-content:center; padding:24px;}
+  .login-card{max-width:380px; width:100%; background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:32px 28px; box-shadow:0 8px 30px rgba(0,0,0,.08);}
+  .login-card h1{font-size:24px; margin-bottom:6px;}
+  .login-card .lead{font-size:14.5px; margin-bottom:22px;}
+  .login-field{margin-bottom:14px;}
+  .login-field label{display:block; font-weight:700; font-size:13.5px; color:var(--accent-dark); margin-bottom:6px;}
+  .login-field input{width:100%;}
+  .login-actions{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+  .login-actions .btn{flex:1;}
+  .login-error{color:var(--red); font-size:13px; min-height:18px; margin-top:4px;}
+  .login-note{font-size:12px; color:var(--ink-soft); margin-top:16px; line-height:1.5;}
+
+  .account-bar{display:flex; align-items:center; justify-content:flex-end; gap:10px; max-width:760px; margin:0 auto; padding:10px 20px 0; font-size:13px; color:var(--ink-soft);}
+  .account-bar b{color:var(--ink);}
+  .account-bar button{font-family:var(--sans); font-size:12.5px; font-weight:600; color:var(--accent-dark); background:transparent; border:1px solid var(--border); border-radius:999px; padding:5px 12px; cursor:pointer;}
+  .account-bar button:hover{background:var(--card);}
+
+  .nav{position:sticky; top:0; z-index:50; background:rgba(247,242,234,0.94); backdrop-filter:blur(6px); border-bottom:1px solid var(--border); padding:10px 12px; display:flex; gap:6px; overflow-x:auto; scrollbar-width:none;}
+  .nav::-webkit-scrollbar{display:none;}
+  .nav button{flex:0 0 auto; font-family:var(--sans); font-size:12.5px; font-weight:600; color:var(--ink-soft); background:transparent; border:1px solid var(--border); border-radius:999px; padding:7px 13px; cursor:pointer; white-space:nowrap; transition:all .15s ease;}
+  .nav button:hover{background:var(--card); color:var(--ink);}
+  .nav button.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+
+  main{max-width:760px; margin:0 auto; padding:0 20px 40px;}
+  .page{padding:52px 0 40px; border-bottom:1px solid var(--border);}
+  .page:last-of-type{border-bottom:none;}
+  .kicker{font-size:12.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--accent-dark); margin:0 0 14px; display:flex; align-items:center; gap:8px;}
+  .kicker::before{content:''; width:7px; height:7px; border-radius:50%; background:var(--accent); display:inline-block;}
+  h1{font-family:var(--serif); font-size:38px; line-height:1.15; margin:0 0 18px; font-weight:700;}
+  h2{font-family:var(--serif); font-size:28px; line-height:1.2; margin:0 0 16px; font-weight:700;}
+  h3{font-family:var(--serif); font-size:19px; margin:0 0 8px; font-weight:700;}
+  p{margin:0 0 14px; font-size:16px; color:var(--ink);}
+  .lead{font-size:17px; color:var(--ink-soft);}
+  .muted{color:var(--ink-soft); font-size:14px;}
+
+  .callout{background:var(--card); border-left:3px solid var(--accent); border-radius:10px; padding:18px 20px; margin:20px 0; font-family:var(--serif); font-style:italic; font-size:16.5px; color:#4A3E30;}
+  .card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:22px; margin:16px 0;}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media(max-width:640px){ .grid3{grid-template-columns:1fr;} h1{font-size:30px;} h2{font-size:23px;} }
+
+  .field{margin:20px 0;}
+  .field label{display:block; font-weight:700; font-size:14.5px; color:var(--accent-dark); margin-bottom:8px;}
+  .field .hint{font-weight:400; color:var(--ink-soft); font-size:13px; margin-left:6px;}
+  input[type=text], input[type=password], textarea{width:100%; font-family:var(--sans); font-size:15.5px; color:var(--ink); background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; resize:vertical; outline:none; transition:border-color .15s ease, box-shadow .15s ease;}
+  input[type=text]:focus, input[type=password]:focus, textarea:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);}
+  textarea{min-height:70px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media(max-width:640px){ .row2{grid-template-columns:1fr;} }
+
+  .slider-wrap{margin:8px 0 4px;}
+  .slider-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;}
+  .slider-value{font-family:var(--serif); font-size:22px; font-weight:700; color:var(--accent-dark);}
+  input[type=range]{-webkit-appearance:none; width:100%; height:6px; border-radius:999px; background:linear-gradient(90deg, var(--accent) 0%, var(--accent) var(--fill,50%), var(--border) var(--fill,50%), var(--border) 100%); outline:none; cursor:pointer; margin:6px 0 2px;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:22px; height:22px; border-radius:50%; background:#fff; border:3px solid var(--accent); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.2);}
+  input[type=range]::-moz-range-thumb{width:22px; height:22px; border-radius:50%; background:#fff; border:3px solid var(--accent); cursor:pointer;}
+  .slider-scale{display:flex; justify-content:space-between; font-size:12px; color:var(--ink-soft);}
+
+  .trap-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px;}
+  .trap-card h3{color:var(--accent-dark);}
+  .trap-card .ex{font-style:italic; color:var(--ink-soft); font-size:14.5px; margin-bottom:10px;}
+  .trap-card .q{font-weight:700; font-size:13.5px;}
+
+  .breathe-box{background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:36px 24px; display:flex; flex-direction:column; align-items:center; gap:22px; margin:20px 0;}
+  .ring-wrap{position:relative; width:220px; height:220px; display:flex; align-items:center; justify-content:center;}
+  .ring-bg{position:absolute; inset:0; border-radius:50%; background: conic-gradient(var(--accent) 0% 25%, var(--accent-soft) 25% 50%, var(--blue) 50% 87.5%, var(--blue-soft) 87.5% 100%); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 10px)); mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 10px));}
+  .ring-pointer{position:absolute; inset:0;}
+  .ring-pointer .dot{position:absolute; top:0; left:50%; width:14px; height:14px; margin-left:-7px; margin-top:-3px; border-radius:50%; background:#fff; border:3px solid var(--accent-dark); box-shadow:0 1px 3px rgba(0,0,0,.25);}
+  .breathe-circle{width:104px; height:104px; border-radius:50%; background:radial-gradient(circle at 35% 32%, #fff, var(--accent-soft) 60%, var(--accent) 140%); box-shadow:0 4px 18px rgba(201,113,63,0.35); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px; padding:8px; overflow:hidden; transform:scale(1);}
+  .breathe-circle .phase{font-family:var(--serif); font-weight:700; font-size:14px; line-height:1.15; color:#5A3A22; letter-spacing:.01em;}
+  .breathe-circle .timer{font-family:var(--sans); font-weight:700; font-size:21px; line-height:1; color:var(--accent-dark); letter-spacing:.02em; font-variant-numeric:tabular-nums;}
+  .breathe-controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;}
+  .btn{font-family:var(--sans); font-weight:700; font-size:14px; border-radius:999px; border:1px solid var(--accent); padding:10px 20px; cursor:pointer; background:var(--accent); color:#fff; transition:opacity .15s ease;}
+  .btn.secondary{background:transparent; color:var(--accent-dark);}
+  .btn:hover{opacity:.88;}
+  .btn:active{transform:translateY(1px);}
+  .cycle-count{font-size:13px; color:var(--ink-soft);}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; justify-content:center; font-size:12.5px; color:var(--ink-soft);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{width:10px; height:10px; border-radius:3px; display:inline-block;}
+
+  .g54321{display:grid; grid-template-columns:32px 1fr; gap:10px 12px; align-items:center; margin-top:6px;}
+  .g54321 .num{font-family:var(--serif); font-size:22px; font-weight:700; color:var(--accent-dark); text-align:center;}
+
+  table.navtab{width:100%; border-collapse:collapse; margin:16px 0;}
+  table.navtab td{padding:12px 10px; border-bottom:1px solid var(--border); font-size:14.5px; vertical-align:top;}
+  table.navtab td:first-child{color:var(--ink-soft);}
+  table.navtab td:last-child{font-weight:700; color:var(--accent-dark); text-align:right; white-space:nowrap;}
+
+  .chip-group{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;}
+  .chip{border:1px solid var(--border); background:var(--surface); border-radius:999px; padding:8px 15px; font-size:13.5px; cursor:pointer; user-select:none; transition:all .12s ease; color:var(--ink);}
+  .chip.selected{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .radio-list{display:flex; flex-direction:column; gap:8px; margin-top:8px;}
+  .radio-opt{display:flex; gap:10px; align-items:flex-start; border:1px solid var(--border); background:var(--surface); border-radius:10px; padding:12px 14px; cursor:pointer; transition:border-color .12s ease, background .12s ease;}
+  .radio-opt:hover{border-color:var(--accent);}
+  .radio-opt.selected{border-color:var(--accent); background:var(--accent-soft);}
+  .radio-opt input{margin-top:3px;}
+  .radio-opt span{font-size:14.5px;}
+
+  .support-btn-wrap{text-align:center; margin:28px 0 8px;}
+  .btn-big{font-size:16px; padding:14px 30px;}
+
+  .result-card{display:none; margin-top:24px; border-radius:18px; padding:28px 26px; position:relative; overflow:hidden; background:linear-gradient(160deg, var(--card-2), var(--card)); border:1px solid var(--border);}
+  .result-card.show{display:block; animation:fadein .5s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+  .result-badge{font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--accent-dark); margin-bottom:10px;}
+  .result-quote{font-family:var(--serif); font-style:italic; font-size:19px; line-height:1.45; color:#41321F; margin-bottom:14px;}
+  .result-advice{font-size:15.5px; color:var(--ink);}
+  .result-foot{margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;}
+
+  .history-item{background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:4px 16px; margin-bottom:10px;}
+  .history-item summary{cursor:pointer; padding:12px 0; display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center; list-style:none;}
+  .history-item summary::-webkit-details-marker{display:none;}
+  .hist-date{font-weight:700; font-family:var(--serif); font-size:15.5px;}
+  .hist-badge{font-size:12.5px; color:var(--accent-dark); font-weight:600;}
+  .hist-body{padding:0 0 16px;}
+
+  .week-row{display:flex; align-items:center; gap:12px; margin-bottom:12px;}
+  .week-label{flex:0 0 150px; font-size:13px; color:var(--ink-soft);}
+  .week-bar-wrap{flex:1; background:var(--card); border-radius:999px; height:10px; overflow:hidden;}
+  .week-bar{height:100%; background:var(--accent); border-radius:999px;}
+  .week-val{flex:0 0 40px; text-align:right; font-weight:700; font-size:13.5px; color:var(--accent-dark);}
+
+  footer{max-width:760px; margin:0 auto; padding:20px 20px 60px; text-align:center; color:var(--ink-soft); font-size:12.5px;}
+
+  /* Mobile optimization */
+  @media(max-width:640px){
+    .account-bar{flex-wrap:wrap; justify-content:space-between; padding:10px 16px 0;}
+    .nav{padding:9px 10px; gap:5px;}
+    .nav button{font-size:12px; padding:6px 11px;}
+    main{padding:0 16px 32px;}
+    .page{padding:38px 0 30px;}
+    .card{padding:18px;}
+    .callout{padding:16px 17px; font-size:15.5px;}
+    .breathe-box{padding:26px 16px;}
+    .ring-wrap{width:188px; height:188px;}
+    .breathe-circle{width:92px; height:92px;}
+    .breathe-circle .phase{font-size:13px;}
+    .breathe-circle .timer{font-size:19px;}
+    .legend{gap:10px 14px; font-size:11.5px;}
+    .login-card{padding:26px 20px;}
+    table.navtab td{font-size:13.5px; padding:10px 5px;}
+    .week-row{flex-wrap:wrap;}
+    .week-label{flex:0 0 100%; margin-bottom:4px;}
+    .week-val{flex:0 0 40px;}
+    .g54321{grid-template-columns:26px 1fr;}
+  }
+  @media(max-width:400px){
+    h1{font-size:26px;}
+    h2{font-size:21px;}
+    .ring-wrap{width:164px; height:164px;}
+    .breathe-circle{width:80px; height:80px; padding:6px;}
+    .breathe-circle .phase{font-size:11.5px;}
+    .breathe-circle .timer{font-size:17px;}
+    .nav button{font-size:11px; padding:5px 9px;}
+    .btn{font-size:13px; padding:9px 16px;}
+  }
+  /* Desktop optimization */
+  @media(min-width:1000px){
+    main{max-width:820px;}
+    .login-card{max-width:420px;}
+    .breathe-box{padding:44px 32px;}
+  }
+</style>
+</head>
+<body>
+<div class="login-overlay" id="loginScreen">
+  <div class="login-card">
+    <p class="kicker" style="margin-bottom:6px;">Личный кабинет</p>
+    <h1>Вход в тетрадь</h1>
+    <p class="lead">Придумай имя и пароль. Если заходишь впервые — зарегистрируйся: твои ответы, дневник и еженедельные проверки будут сохраняться отдельно, под твоим именем, в этом браузере.</p>
+    <div class="login-field">
+      <label>Имя</label>
+      <input type="text" id="loginUsername" placeholder="Например, Аня" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Пароль</label>
+      <input type="password" id="loginPassword" placeholder="Минимум 4 символа" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-actions">
+      <button class="btn secondary" id="registerBtn" type="button">Зарегистрироваться</button>
+      <button class="btn" id="loginBtn" type="button">Войти</button>
+    </div>
+    <p class="login-note">Пароль хранится локально в этом браузере и никуда не отправляется — это способ разделить записи разных людей на одном устройстве, а не защита банковского уровня.</p>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none;">
+
+<div class="account-bar">Ты вошёл(-шла) как <b id="accountName"></b><button id="logoutBtn" type="button">Выйти</button></div>
+
+<nav class="nav" id="navbar">
+  <button data-target="cover">Обложка</button>
+  <button data-target="s1">1 · Начало</button>
+  <button data-target="s2">2 · Механизм</button>
+  <button data-target="s3">3 · Декатастроф.</button>
+  <button data-target="s4">4 · Чтение мыслей</button>
+  <button data-target="s5">5 · Предсказание</button>
+  <button data-target="s6">6 · Ловушки</button>
+  <button data-target="s7">7 · Дыхание</button>
+  <button data-target="s8">8 · Навигатор</button>
+  <button data-target="test">9 · Тест</button>
+  <button data-target="history">10 · Дневник</button>
+  <button data-target="weekly">11 · Неделя</button>
+  <button data-target="gratitude">12 · Благодарность</button>
+</nav>
+
+<main>
+  <section class="page" id="cover">
+    <p class="kicker">Рабочая тетрадь · 8 шагов + тест</p>
+    <h1>Что делать,<br>когда тревожно</h1>
+    <p class="lead">Интерактивная версия. Печатай ответы прямо в поля — они сохраняются под твоим именем, шаг за шагом.</p>
+    <div class="card">
+      <div class="row2">
+        <div class="field" style="margin:0;">
+          <label>Имя</label>
+          <input type="text" id="f_name" placeholder="Как тебя зовут?">
+        </div>
+        <div class="field" style="margin:0;">
+          <label>Дата</label>
+          <input type="text" id="f_date" placeholder="Например, 10.09">
+        </div>
+      </div>
+    </div>
+    <p class="muted">Не нужно заполнять всё сразу — возвращайся к нужной странице, когда станет тревожно. Отвечай честно и коротко: важна не «правильность», а сам процесс.</p>
+  </section>
+
+  <section class="page" id="s1">
+    <p class="kicker">01 · Начало</p>
+    <h2>Что такое тревога?</h2>
+    <p>Тревога — это система раннего предупреждения тела. Она пытается заметить возможную опасность заранее, ещё до того, как та случится.</p>
+    <p>Сама по себе тревога — нормальна. Она помогает подготовиться, быть внимательнее, заранее продумать действия и вовремя заметить риск.</p>
+    <p>Проблема начинается не тогда, когда тревога появляется, а когда она перестаёт помогать и начинает мешать: заставляет избегать, без конца перепроверять, прокручивать одни и те же сценарии, искать гарантии там, где их не бывает.</p>
+    <div class="callout">Цель не в том, чтобы никогда не тревожиться. Цель — научиться управлять тревогой, когда она начинает управлять тобой.</div>
+  </section>
+
+  <section class="page" id="s2">
+    <p class="kicker">02 · Механизм</p>
+    <h2>Как одна мысль раскручивает тревогу</h2>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px;">Ситуация → Мысль → Эмоция → Тело → Поведение</p>
+      <p style="margin-bottom:4px;">Человек не ответил на сообщение</p>
+      <p style="margin-bottom:4px; color:var(--accent-dark);">↓ «Наверное, он на меня злится»</p>
+      <p style="margin-bottom:4px;">↓ тревога → сердцебиение, напряжение</p>
+      <p style="margin-bottom:0;">↓ желание написать ещё 5 сообщений, проверить телефон</p>
+    </div>
+    <p>Часто нас тревожит не сама ситуация, а то, как мозг её интерпретирует. Тревожная мысль не обязательно неправильная — задача не заменить её на позитивную, а заменить автоматическую мысль на более реалистичную.</p>
+    <p>Такие привычные ошибки мышления называют когнитивными искажениями — это не диагноз, просто способ, которым мозг иногда смотрит на ситуацию тревожнее, чем она есть на самом деле.</p>
+    <div class="field">
+      <label>Вспомни последний момент, когда тревожился(-лась). Какая мысль пришла первой? <span class="hint">одной фразой</span></label>
+      <input type="text" id="f_thought" placeholder="Например: «Я точно всё испорчу»">
+    </div>
+  </section>
+
+  <section class="page" id="s3">
+    <p class="kicker">Техника 1</p>
+    <h2>Декатастрофизация</h2>
+    <p>Тревога часто рисует самый страшный сценарий так, будто он уже почти произошёл. Наша задача — не убедить себя, что «всё точно будет хорошо», а посмотреть на ситуацию трезво и вернуть ей масштаб.</p>
+    <p>Тревожный мозг путает «это возможно» с «это обязательно случится». Из всех вероятных исходов он выбирает самый пугающий — и реагирует так, будто тот уже наступил.</p>
+    <p>Декатастрофизация — это пошаговая проверка: насколько вероятен худший сценарий на самом деле, какие есть факты за и против него, и что делать, если он всё же произойдёт. Мы не убираем тревогу силой воли — мы возвращаем ситуации её реальный масштаб.</p>
+
+    <div class="field">
+      <label>1. Чего я сейчас боюсь?</label>
+      <textarea id="f_d1"></textarea>
+    </div>
+    <div class="field">
+      <label>2. Самый страшный вариант — и насколько он вероятен?</label>
+      <textarea id="f_d2_text" placeholder="Опиши сценарий"></textarea>
+      <div class="slider-wrap">
+        <div class="slider-top"><span class="muted">Вероятность</span><span class="slider-value" id="val_d2">50%</span></div>
+        <input type="range" min="0" max="100" value="50" id="slider_d2">
+        <div class="slider-scale"><span>0% — маловероятно</span><span>100% — почти наверняка</span></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>3. Факты «за» и факты «против» этого сценария</label>
+      <div class="row2">
+        <textarea id="f_d3_for" placeholder="За"></textarea>
+        <textarea id="f_d3_against" placeholder="Против"></textarea>
+      </div>
+    </div>
+    <div class="field">
+      <label>4. Какой сценарий на самом деле наиболее реалистичен?</label>
+      <textarea id="f_d4"></textarea>
+    </div>
+    <div class="field">
+      <label>5. Если худшее всё же случится — мой первый шаг</label>
+      <textarea id="f_d5"></textarea>
+    </div>
+  </section>
+  <section class="page" id="s4">
+    <p class="kicker">Техника 2</p>
+    <h2>Чтение мыслей</h2>
+    <p class="lead" style="font-style:italic;">«Он точно думает обо мне плохо»</p>
+    <p>Это искажение называют «чтением мыслей» — когда мы уверены, что знаем, о чём думает другой человек, хотя на самом деле только предполагаем.</p>
+    <p>Разница между фактом и интерпретацией — ключ к этой технике. Факт — это то, что можно было бы снять на камеру: слова, действия, выражение лица. Всё остальное — уже наша версия происходящего, и у неё почти всегда есть более нейтральные альтернативы.</p>
+    <div class="callout">«Он посмотрел на меня странно» → «он точно плохо обо мне думает». Факт ≠ моя интерпретация.</div>
+    <p>Важно честно признать себе: мы, в целом, не умеем читать чужие мысли — и никто не умеет, как бы уверенно это ни ощущалось. Единственное, чему мы можем верить или не верить, — это слова, которые сам человек нам говорит. Догадки о том, что «он на самом деле думает», обычно говорят больше о нашей тревоге, чем о реальных мыслях другого человека. Если важно узнать, что думает кто-то другой, самый надёжный способ — спросить прямо, а не угадывать.</p>
+
+    <div class="field">
+      <label>Факт — что я действительно знаю?</label>
+      <textarea id="f_m1"></textarea>
+    </div>
+    <div class="field">
+      <label>Моя мысль — что я предполагаю?</label>
+      <textarea id="f_m2"></textarea>
+    </div>
+    <div class="field">
+      <label>Что ещё это может означать? <span class="hint">хотя бы 2 варианта</span></label>
+      <div class="row2">
+        <textarea id="f_m3a" placeholder="Вариант 1"></textarea>
+        <textarea id="f_m3b" placeholder="Вариант 2"></textarea>
+      </div>
+    </div>
+    <div class="field">
+      <label>Более нейтральная мысль, которую я могу выбрать</label>
+      <textarea id="f_m4"></textarea>
+    </div>
+  </section>
+
+  <section class="page" id="s5">
+    <p class="kicker">Техника 3</p>
+    <h2>Предсказание будущего</h2>
+    <p class="lead" style="font-style:italic;">«Я точно знаю, что будет»</p>
+    <p>На самом деле мы не предсказываем будущее — мы прокручиваем худший вариант так часто, что он начинает ощущаться как единственно возможный. Уверенность тревожной мысли не делает её более правдивой.</p>
+    <p>Задача этой техники — отделить то, что мы знаем точно, от того, что мы просто вообразили, и вспомнить: даже если событие пойдёт не по плану, у нас есть способ с этим справиться.</p>
+
+    <div class="field">
+      <label>Моё предсказание</label>
+      <textarea id="f_p1"></textarea>
+      <div class="slider-wrap">
+        <div class="slider-top"><span class="muted">Насколько я в нём уверен(-а)</span><span class="slider-value" id="val_p2">50%</span></div>
+        <input type="range" min="0" max="100" value="50" id="slider_p2">
+        <div class="slider-scale"><span>0%</span><span>100%</span></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Что я знаю наверняка / что только предполагаю</label>
+      <div class="row2">
+        <textarea id="f_p3a" placeholder="Знаю наверняка"></textarea>
+        <textarea id="f_p3b" placeholder="Только предполагаю"></textarea>
+      </div>
+    </div>
+    <div class="field">
+      <label>Какой сценарий наиболее реалистичен?</label>
+      <textarea id="f_p4"></textarea>
+    </div>
+    <div class="callout">Мне не нужно знать будущее. Мне достаточно знать, что я смогу справиться с тем, что произойдёт.</div>
+  </section>
+
+  <section class="page" id="s6">
+    <p class="kicker">06 · Ещё варианты</p>
+    <h2>Другие ловушки мышления</h2>
+    <p>Три частых искажения, которые тоже усиливают тревогу. Не нужно запоминать названия — важно научиться замечать их у себя.</p>
+    <div class="grid3">
+      <div class="trap-card">
+        <h3>Чёрно-белое мышление</h3>
+        <p class="ex">«Если выступлю не идеально — считай, что провалился(-лась)».</p>
+        <p class="q">Есть ли между «идеально» и «провал» другие варианты?</p>
+      </div>
+      <div class="trap-card">
+        <h3>Сверхобобщение</h3>
+        <p class="ex">«Один раз не получилось — значит, у меня никогда не получится».</p>
+        <p class="q">Это правда «всегда» и «никогда» — или один раз?</p>
+      </div>
+      <div class="trap-card">
+        <h3>Долженствование</h3>
+        <p class="ex">«Я должен(-жна) справляться со всем без ошибок».</p>
+        <p class="q">Что бы я сказал(а) другу с таким же «долгом»?</p>
+      </div>
+    </div>
+    <div class="field">
+      <label>Замечаю ли я сейчас одну из этих ловушек в своих мыслях? Какую?</label>
+      <textarea id="f_trap"></textarea>
+    </div>
+  </section>
+  <section class="page" id="s7">
+    <p class="kicker">07 · Тело</p>
+    <h2>Дыхание по кругу</h2>
+    <p>Когда тревога захватывает тело, самый быстрый вход в состояние покоя — через дыхание. Следуй за движением круга: вдох — задержка — выдох — задержка.</p>
+    <div class="breathe-box">
+      <div class="ring-wrap">
+        <svg class="ring-bg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="90"/></svg>
+        <svg class="ring-pointer" viewBox="0 0 200 200" id="ringPointer"><circle cx="100" cy="10" r="7"/></svg>
+        <div class="breathe-circle" id="breatheCircle">
+          <div class="phase" id="phaseLabel">Готово</div>
+          <div class="timer" id="phaseTimer">4.0.6.2</div>
+        </div>
+      </div>
+      <div class="breathe-controls">
+        <button class="btn" id="startBreathe" type="button">Начать</button>
+        <button class="btn secondary" id="pauseBreathe" type="button">Пауза</button>
+        <button class="btn secondary" id="resetBreathe" type="button">Сброс</button>
+      </div>
+      <div class="legend"><span>Вдох 4с</span><span>Задержка 4с</span><span>Выдох 6с</span><span>Задержка 2с</span></div>
+    </div>
+    <p class="muted" style="text-align:center;">Повтори 4–6 кругов. Если голова кружится — дыши чуть спокойнее.</p>
+  </section>
+
+  <section class="page" id="s8">
+    <p class="kicker">08 · Навигатор</p>
+    <h2>Когда что использовать</h2>
+    <p>Быстрая шпаргалка по техникам этой тетради.</p>
+    <table class="navtab">
+      <tr><th>Ситуация</th><th>Что делать</th></tr>
+      <tr><td>Мысли о худшем исходе</td><td>Стр. 3 — декатастрофизация</td></tr>
+      <tr><td>Думаю, что знаю, о чём думают другой</td><td>Стр. 4 — чтение мыслей</td></tr>
+      <tr><td>Уверен(-а) в своём предсказании</td><td>Стр. 5 — предсказание будущего</td></tr>
+      <tr><td>Тело напряжено, трудно дышать</td><td>Стр. 7 — дыхание по кругу</td></tr>
+      <tr><td>Нужно быстро вернуться в момент</td><td>См. 5-4-3-2-1 ниже</td></tr>
+    </table>
+    <div class="card">
+      <h3 style="margin-top:0;">5-4-3-2-1: вернуться в момент</h3>
+      <p class="g54321"><b>5</b> — что я вижу</p>
+      <p class="g54321"><b>4</b> — что я чувствую тактильно</p>
+      <p class="g54321"><b>3</b> — что я слышу</p>
+      <p class="g54321"><b>2</b> — что я ощущаю по запаху</p>
+      <p class="g54321" style="margin-bottom:0;"><b>1</b> — что я ощущаю на вкус</p>
+    </div>
+  </section>
+  <section class="page" id="test">
+    <p class="kicker">9 · Тест</p>
+    <h2>Как ты сейчас?</h2>
+    <p class="lead">Отметь, что происходит в теле и в мыслях прямо сейчас, оцени уровень тревоги — и получи немного поддержки.</p>
+    <div class="field">
+      <label>Что чувствует тело? <span class="hint">можно выбрать несколько</span></label>
+      <div class="chip-group" id="bodyChips">
+        <button type="button" class="chip" data-val="rapid_heartbeat">Сердце колотится</button>
+        <button type="button" class="chip" data-val="chest_tight">Сжимает в груди</button>
+        <button type="button" class="chip" data-val="throat_lump">Ком в горле</button>
+        <button type="button" class="chip" data-val="shoulder_tension">Напряжены плечи</button>
+        <button type="button" class="chip" data-val="hand_tremor">Дрожат руки</button>
+        <button type="button" class="chip" data-val="sweaty_palms">Потеют ладони</button>
+        <button type="button" class="chip" data-val="dizziness">Кружится голова</button>
+        <button type="button" class="chip" data-val="shallow_breath">Дыхание поверхностное</button>
+        <button type="button" class="chip" data-val="rapid_breathing">Дышу часто и быстро</button>
+        <button type="button" class="chip" data-val="nausea">Подташнивает</button>
+        <button type="button" class="chip" data-val="stomach_knot">Живот скручивает</button>
+        <button type="button" class="chip" data-val="leg_weakness">Ноги слабые, ватные</button>
+        <button type="button" class="chip" data-val="dry_mouth">Сухость во рту</button>
+        <button type="button" class="chip" data-val="numb_fingers">Немеют пальцы</button>
+        <button type="button" class="chip" data-val="hot_flash">Бросает в жар</button>
+        <button type="button" class="chip" data-val="cold_chill">Бросает в холод</button>
+        <button type="button" class="chip" data-val="temple_pulse">Пульсирует в висках</button>
+        <button type="button" class="chip" data-val="body_stiffness">Тело как одеревенело</button>
+        <button type="button" class="chip" data-val="inner_trembling">Внутренняя дрожь</button>
+        <button type="button" class="chip" data-val="restlessness">Не могу усидеть на месте</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Какая мысль ближе всего? <span class="hint">выбери одну</span></label>
+      <div class="radio-list" id="thoughtOptions">
+        <label class="radio-opt"><input type="radio" name="thought" value="badGeneral" checked> Мне просто плохо, и я не понимаю почему</label>
+        <label class="radio-opt"><input type="radio" name="thought" value="catastrophe"> Случится что-то ужасное</label>
+        <label class="radio-opt"><input type="radio" name="thought" value="badGeneral"> Что-то не так, я это чувствую</label>
+        <label class="radio-opt"><input type="radio" name="thought" value="catastrophe"> Всё закончится плохо</label>
+        <label class="radio-opt"><input type="radio" name="thought" value="cantcope"> Я не справлюсь с этим</label>
+        <label class="radio-opt"><input type="radio" name="thought" value="mindread"> Я знаю, что обо мне подумают плохое</label>
+        <label class="radio-opt"><input type="radio" name="thought" value="future"> Дальше будет только хуже</label>
+        <label class="radio-opt"><input type="radio" name="thought" value="losecontrol"> Я теряю контроль над собой</label>
+        <label class="radio-opt"><input type="radio" name="thought" value="selfcritical"> Я сделал(а) что-то не так</label>
+        <label class="radio-opt"><input type="radio" name="thought" value="calm"> В целом сейчас спокойно</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>Уровень тревоги прямо сейчас</label>
+      <div class="slider-wrap">
+        <div class="slider-top"><span class="muted">Тревога</span><span class="slider-value" id="val_anx">50%</span></div>
+        <input type="range" min="0" max="100" value="50" id="slider_anx">
+        <div class="slider-scale"><span>0%</span><span>100%</span></div>
+      </div>
+    </div>
+    <div class="support-btn-wrap">
+      <button class="btn-big" id="getSupportBtn" type="button">Получить поддержку</button>
+    </div>
+    <div class="card result-card" id="resultCard" style="display:none;">
+      <div class="result-badge" id="resultBadge"></div>
+      <p class="result-quote" id="resultQuote"></p>
+      <p class="result-advice" id="resultAdvice"></p>
+      <p class="result-foot muted" id="resultFoot"></p>
+      <div class="login-actions">
+        <button class="btn-big" id="anotherSupportBtn" type="button">Другая поддержка</button>
+        <button class="btn-big" id="goBreatheBtn" type="button">Подышать по кругу</button>
+      </div>
+    </div>
+  </section>
+  <section class="page" id="history">
+    <p class="kicker">10 · Дневник</p>
+    <h2>История твоих записей</h2>
+    <p>Каждый раз, когда ты получаешь поддержку на странице теста, запись сохраняется здесь — можно вернуться и посмотреть, как ты себя чувствовал(а) в разные дни.</p>
+    <p class="muted" id="historyEmpty">Пока здесь пусто. Пройди тест на странице «Тест» и получи поддержку — запись появится тут.</p>
+    <div id="historyList"></div>
+  </section>
+  <section class="page" id="weekly">
+    <p class="kicker">11 · Неделя</p>
+    <h2>Еженедельная проверка</h2>
+    <p>Раз в неделю отмечай, как ты себя чувствовал(а) в целом — это поможет заметить динамику тревоги со временем.</p>
+    <div class="field">
+      <label>Уровень тревоги на этой неделе</label>
+      <div class="slider-wrap">
+        <div class="slider-top"><span class="muted">Тревога</span><span class="slider-value" id="val_week_anx">50%</span></div>
+        <input type="range" min="0" max="100" value="50" id="slider_week_anx">
+        <div class="slider-scale"><span>0%</span><span>100%</span></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Уровень энергии</label>
+      <div class="slider-wrap">
+        <div class="slider-top"><span class="muted">Энергия</span><span class="slider-value" id="val_week_energy">50%</span></div>
+        <input type="range" min="0" max="100" value="50" id="slider_week_energy">
+        <div class="slider-scale"><span>0%</span><span>100%</span></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Качество сна</label>
+      <div class="slider-wrap">
+        <div class="slider-top"><span class="muted">Сон</span><span class="slider-value" id="val_week_sleep">50%</span></div>
+        <input type="range" min="0" max="100" value="50" id="slider_week_sleep">
+        <div class="slider-scale"><span>0%</span><span>100%</span></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Что было сложно на этой неделе?</label>
+      <textarea id="f_week_hard"></textarea>
+    </div>
+    <div class="field">
+      <label>Что помогло?</label>
+      <textarea id="f_week_helped"></textarea>
+    </div>
+    <div class="field">
+      <label>Что чаще всего вызывало тревогу на этой неделе?</label>
+      <textarea id="f_week_trigger" placeholder="Ситуация, человек, мысль — что угодно"></textarea>
+    </div>
+    <div class="field">
+      <label>Какая мысль повторялась чаще всего?</label>
+      <textarea id="f_week_thought"></textarea>
+    </div>
+    <div class="field">
+      <label>Как ты позаботился(-ась) о себе на этой неделе?</label>
+      <textarea id="f_week_care"></textarea>
+    </div>
+    <div class="field">
+      <label>Что бы ты сказал(а) себе в начале следующей недели?</label>
+      <textarea id="f_week_selfmessage"></textarea>
+    </div>
+    <div class="support-btn-wrap">
+      <button class="btn-big" id="saveWeekBtn" type="button">Сохранить неделю</button>
+      <p class="muted" id="weekSaveStatus" style="margin-top:10px;"></p>
+    </div>
+    <div class="card result-card" id="weeklyResultCard" style="display:none;">
+      <div class="result-badge" id="weeklyResultBadge"></div>
+      <p class="result-quote" id="weeklyResultNote" style="margin-bottom:0;"></p>
+    </div>
+    <h2 style="margin-top:36px;">История по неделям</h2>
+    <p class="muted" id="weeklyEmpty">Пока здесь пусто. Сохрани первую неделю выше.</p>
+    <div id="weeklyList"></div>
+  </section>
+  <section class="page" id="gratitude">
+    <p class="kicker">12 · Благодарность</p>
+    <h2>Дневник благодарности</h2>
+    <p class="lead">Несколько минут в конце дня, чтобы заметить хорошее и создать себе немного опоры.</p>
+    <div class="field">
+      <label>За что ты благодарен(на) сегодня?</label>
+      <textarea id="f_grat_thanks" placeholder="Может быть что-то совсем небольшое"></textarea>
+    </div>
+    <div class="field">
+      <label>Кого ты сегодня благодаришь и за что?</label>
+      <textarea id="f_grat_who" placeholder="Имя человека и то, за что ему спасибо"></textarea>
+    </div>
+    <div class="field">
+      <label>Что хорошего ты сделал(а) сегодня для себя?</label>
+      <textarea id="f_grat_self"></textarea>
+    </div>
+    <div class="field">
+      <label>Что хорошего ты сделал(а) сегодня для других?</label>
+      <textarea id="f_grat_others"></textarea>
+    </div>
+    <div class="field">
+      <label>Что понравилось тебе за этот день?</label>
+      <textarea id="f_grat_liked"></textarea>
+    </div>
+    <div class="support-btn-wrap">
+      <button class="btn-big" id="saveGratitudeBtn" type="button">Сохранить день</button>
+      <p class="muted" id="gratitudeSaveStatus" style="margin-top:10px;"></p>
+    </div>
+    <h2 style="margin-top:36px;">История благодарности</h2>
+    <p class="muted" id="gratitudeEmpty">Пока здесь пусто. Сохрани первую запись выше.</p>
+    <div id="gratitudeList"></div>
+  </section>
+</main>
+<footer>Сделано с заботой о тебе. Это не замена психолога или врача.</footer>
+</div>
+<script>
+(function(){
+  var ACCOUNTS_KEY = 'anxiety_workbook_accounts_v1';
+  var SESSION_KEY = 'anxiety_workbook_session_v1';
+
+  function loadAccounts(){ try{ return JSON.parse(localStorage.getItem(ACCOUNTS_KEY)) || {}; }catch(e){ return {}; } }
+  function saveAccounts(accs){ localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accs)); }
+  function normalize(name){ return (name||'').trim().toLowerCase(); }
+  function hashPass(pass){
+    var str = String(pass||'');
+    var hash = 0;
+    for(var i=0;i<str.length;i++){ hash = ((hash<<5)-hash+str.charCodeAt(i))|0; }
+    return String(hash);
+  }
+
+  var loginScreen = document.getElementById('loginScreen');
+  var appRoot = document.getElementById('appRoot');
+  var loginUsername = document.getElementById('loginUsername');
+  var loginPassword = document.getElementById('loginPassword');
+  var loginError = document.getElementById('loginError');
+  var registerBtn = document.getElementById('registerBtn');
+  var loginBtn = document.getElementById('loginBtn');
+  var accountName = document.getElementById('accountName');
+  var logoutBtn = document.getElementById('logoutBtn');
+
+  function showApp(user){
+    loginScreen.style.display = 'none';
+    appRoot.style.display = 'block';
+    accountName.textContent = user;
+    initWorkbook(user);
+  }
+  function showLogin(){
+    appRoot.style.display = 'none';
+    loginScreen.style.display = 'flex';
+    loginUsername.value = '';
+    loginPassword.value = '';
+    loginError.textContent = '';
+  }
+
+  function tryAutoLogin(){
+    var session = localStorage.getItem(SESSION_KEY);
+    if(session){
+      var accs = loadAccounts();
+      if(accs[session]){ showApp(session); return; }
+    }
+    showLogin();
+  }
+
+  registerBtn.addEventListener('click', function(){
+    var name = normalize(loginUsername.value);
+    var pass = loginPassword.value || '';
+    if(!name){ loginError.textContent = 'Введи имя.'; return; }
+    if(pass.length < 4){ loginError.textContent = 'Пароль должен быть не короче 4 символов.'; return; }
+    var accs = loadAccounts();
+    if(accs[name]){ loginError.textContent = 'Такое имя уже занято, выбери другое или войди.'; return; }
+    accs[name] = { pass: hashPass(pass) };
+    saveAccounts(accs);
+    localStorage.setItem(SESSION_KEY, name);
+    showApp(name);
+  });
+
+  loginBtn.addEventListener('click', function(){
+    var name = normalize(loginUsername.value);
+    var pass = loginPassword.value || '';
+    var accs = loadAccounts();
+    if(!accs[name]){ loginError.textContent = 'Такого пользователя нет. Зарегистрируйся.'; return; }
+    if(accs[name].pass !== hashPass(pass)){ loginError.textContent = 'Неверный пароль.'; return; }
+    localStorage.setItem(SESSION_KEY, name);
+    showApp(name);
+  });
+
+  [loginUsername, loginPassword].forEach(function(el){
+    el.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ loginBtn.click(); }
+    });
+  });
+
+  logoutBtn.addEventListener('click', function(){
+    localStorage.removeItem(SESSION_KEY);
+    showLogin();
+  });
+
+  tryAutoLogin();
+
+  function initWorkbook(user){
+    var STORE_KEY = 'anxiety_workbook_v1__' + user;
+    var store = { fields: {}, dailyEntries: [], weeklyEntries: [], gratitudeEntries: [] };
+    try{
+      var raw = localStorage.getItem(STORE_KEY);
+      if(raw){
+        var parsed = JSON.parse(raw);
+        store.fields = parsed.fields || {};
+        store.dailyEntries = parsed.dailyEntries || [];
+        store.weeklyEntries = parsed.weeklyEntries || [];
+        store.gratitudeEntries = parsed.gratitudeEntries || [];
+      }
+    }catch(e){}
+
+    function persist(){ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+
+    var textFieldIds = ['f_name','f_date','f_thought','f_d1','f_d2_text','f_d3_for','f_d3_against','f_d4','f_d5','f_m1','f_m2','f_m3a','f_m3b','f_m4','f_p1','f_p3a','f_p3b','f_p4','f_trap','f_grounding','f_week_hard','f_week_helped','f_week_trigger','f_week_thought','f_week_care','f_week_selfmessage','f_grat_thanks','f_grat_who','f_grat_self','f_grat_others','f_grat_liked'];
+
+    textFieldIds.forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el) return;
+      if(store.fields[id] !== undefined){ el.value = store.fields[id]; }
+      el.addEventListener('input', function(){ store.fields[id] = el.value; persist(); });
+    });
+
+    function setupSlider(sliderId, valId){
+      var slider = document.getElementById(sliderId);
+      var val = document.getElementById(valId);
+      if(!slider || !val) return;
+      if(store.fields[sliderId] !== undefined){ slider.value = store.fields[sliderId]; }
+      function update(){ val.textContent = slider.value + '%'; }
+      update();
+      slider.addEventListener('input', function(){ update(); store.fields[sliderId] = slider.value; persist(); });
+    }
+    setupSlider('slider_d2','val_d2');
+    setupSlider('slider_p2','val_p2');
+    setupSlider('slider_anx','val_anx');
+    setupSlider('slider_week_anx','val_week_anx');
+    setupSlider('slider_week_energy','val_week_energy');
+    setupSlider('slider_week_sleep','val_week_sleep');
+
+    var navButtons = document.querySelectorAll('#navbar button');
+    var sections = document.querySelectorAll('main .page');
+    navButtons.forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var target = document.getElementById(btn.getAttribute('data-target'));
+        if(target){ target.scrollIntoView({behavior:'smooth'}); }
+      });
+    });
+    function updateActiveNav(){
+      var scrollPos = window.scrollY + 120;
+      var current = null;
+      sections.forEach(function(sec){
+        if(sec.offsetTop <= scrollPos){ current = sec.id; }
+      });
+      navButtons.forEach(function(btn){
+        btn.classList.toggle('active', btn.getAttribute('data-target') === current);
+      });
+    }
+    window.addEventListener('scroll', updateActiveNav);
+    updateActiveNav();
+
+    var selectedChips = store.fields.__bodyChips || [];
+    var chipButtons = document.querySelectorAll('#bodyChips .chip');
+    chipButtons.forEach(function(chip){
+      var val = chip.getAttribute('data-val');
+      if(selectedChips.indexOf(val) !== -1){ chip.classList.add('selected'); }
+      chip.addEventListener('click', function(){
+        chip.classList.toggle('selected');
+        var idx = selectedChips.indexOf(val);
+        if(chip.classList.contains('selected')){
+          if(idx === -1){ selectedChips.push(val); }
+        } else {
+          if(idx !== -1){ selectedChips.splice(idx,1); }
+        }
+        store.fields.__bodyChips = selectedChips;
+        persist();
+      });
+    });
+
+    var thoughtLabels = {
+      badGeneral: 'общее тревожное предчувствие',
+      catastrophe: 'ожидание катастрофы',
+      cantcope: 'страх не справиться',
+      mindread: 'чтение чужих мыслей',
+      future: 'страх за будущее',
+      losecontrol: 'потеря контроля',
+      selfcritical: 'самокритика',
+      calm: 'спокойное состояние'
+    };
+    var thoughtRadios = document.querySelectorAll('#thoughtOptions input[name="thought"]');
+    thoughtRadios.forEach(function(r){
+      r.addEventListener('change', function(){
+        store.fields.__thought = r.value;
+        persist();
+      });
+    });
+
+    var CYCLE = 16;
+    var phases = [
+      { name: 'Вдох', dur: 4, scaleFrom: 0.7, scaleTo: 1.0 },
+      { name: 'Задержка', dur: 4, scaleFrom: 1.0, scaleTo: 1.0 },
+      { name: 'Выдох', dur: 6, scaleFrom: 1.0, scaleTo: 0.7 },
+      { name: 'Задержка', dur: 2, scaleFrom: 0.7, scaleTo: 0.7 }
+    ];
+
+    var breatheCircle = document.getElementById('breatheCircle');
+    var phaseLabel = document.getElementById('phaseLabel');
+    var phaseTimer = document.getElementById('phaseTimer');
+    var ringPointer = document.getElementById('ringPointer');
+    var startBtn = document.getElementById('startBreathe');
+    var pauseBtn = document.getElementById('pauseBreathe');
+    var resetBtn = document.getElementById('resetBreathe');
+
+    var breatheRAF = null;
+    var breatheStart = null;
+    var breatheElapsedAtPause = 0;
+    var breatheRunning = false;
+
+    function phaseAt(t){
+      var acc = 0;
+      for(var i=0;i<phases.length;i++){
+        if(t < acc + phases[i].dur){
+          return { phase: phases[i], elapsed: t - acc };
+        }
+        acc += phases[i].dur;
+      }
+      return { phase: phases[0], elapsed: 0 };
+    }
+
+    function frame(ts){
+      if(!breatheRunning) return;
+      if(!breatheStart) breatheStart = ts;
+      var elapsedMs = (ts - breatheStart) + breatheElapsedAtPause;
+      var t = (elapsedMs/1000) % CYCLE;
+      var info = phaseAt(t);
+      var remain = Math.ceil(info.phase.dur - info.elapsed);
+      if(phaseLabel) phaseLabel.textContent = info.phase.name;
+      if(phaseTimer) phaseTimer.textContent = remain > 0 ? remain : info.phase.dur;
+      var progress = info.elapsed / info.phase.dur;
+      var scale = info.phase.scaleFrom + (info.phase.scaleTo - info.phase.scaleFrom) * progress;
+      if(breatheCircle) breatheCircle.style.transform = 'scale(' + scale.toFixed(3) + ')';
+      var angle = (t / CYCLE) * 360;
+      var rad = (angle - 90) * Math.PI / 180;
+      var cx = 110 + 100 * Math.cos(rad);
+      var cy = 110 + 100 * Math.sin(rad);
+      if(ringPointer){
+        var circleEl = ringPointer.querySelector('circle');
+        if(circleEl){ circleEl.setAttribute('cx', cx.toFixed(1)); circleEl.setAttribute('cy', cy.toFixed(1)); }
+      }
+      breatheRAF = requestAnimationFrame(frame);
+    }
+
+    if(startBtn) startBtn.addEventListener('click', function(){
+      if(breatheRunning) return;
+      breatheRunning = true;
+      breatheStart = null;
+      breatheRAF = requestAnimationFrame(frame);
+    });
+    if(pauseBtn) pauseBtn.addEventListener('click', function(){
+      if(!breatheRunning) return;
+      breatheRunning = false;
+      if(breatheRAF) cancelAnimationFrame(breatheRAF);
+      breatheElapsedAtPause += (performance.now() - breatheStart);
+      breatheStart = null;
+    });
+    if(resetBtn) resetBtn.addEventListener('click', function(){
+      breatheRunning = false;
+      if(breatheRAF) cancelAnimationFrame(breatheRAF);
+      breatheStart = null;
+      breatheElapsedAtPause = 0;
+      if(phaseLabel) phaseLabel.textContent = 'Готовы?';
+      if(phaseTimer) phaseTimer.textContent = '4';
+      if(breatheCircle) breatheCircle.style.transform = 'scale(0.7)';
+    });
+
+    var quotesLow = [
+      'Ты справляешься лучше, чем тебе кажется.',
+      'Спокойствие — это тоже прогресс.',
+      'Хорошо, что ты сегодня заметил(а) своё состояние.',
+      'Ты даёшь себе важное внимание прямо сейчас.'
+    ];
+    var quotesMid = [
+      'Тревога — это волна: она поднимается и обязательно спадает.',
+      'Ты уже переживал(а) трудные моменты и справлялся(ась).',
+      'Дай себе немного времени — не нужно решать всё прямо сейчас.',
+      'Один шаг за раз — этого вполне достаточно.'
+    ];
+    var quotesHigh = [
+      'Сейчас тяжело, и это не будет длиться вечно.',
+      'Ты не один(одна) с этим — можно попросить о поддержке.',
+      'Ты уже сделал(а) важный шаг, просто заметив, что происходит.',
+      'Позволь себе просто пережить этот момент, не борясь с ним.'
+    ];
+
+    var advicePlain = {
+      badGeneral: 'Общее плохое предчувствие — это не факт, а сигнал тела. Попробуй назвать словами, что именно вызывает дискомфорт, и отдели ощущение от реального события.',
+      catastrophe: 'Мозг рисует худший сценарий. Спроси себя: насколько он реально вероятен и что говорит опыт прошлых похожих ситуаций?',
+      cantcope: 'Мысль «не справлюсь» обычно преувеличивает сложность. Раздели задачу на маленькие шаги — тебе не нужно решать всё сразу.',
+      mindread: 'Мы в целом не умеем читать чужие мысли. Единственное, чему можно верить или не верить, — это слова, которые человек сказал сам.',
+      future: 'Будущее пока не наступило, и у тебя есть право менять свои шаги по ходу дела. Сфокусируйся на том, что можешь сделать сегодня.',
+      losecontrol: 'Ощущение потери контроля пугает, но это не значит, что оно правдиво. Попробуй технику дыхания или заземления — они возвращают ощущение опоры.',
+      selfcritical: 'Внутренний критик сейчас говорит громче обычного. Спроси себя, что бы ты сказал(а) другу в такой же ситуации.',
+      calm: 'Хорошо, что сейчас более спокойно. Заметь, что помогло тебе прийти в это состояние.'
+    };
+
+    var bodyTips = {
+      rapid_heartbeat: 'Положи руку на грудь и посчитай пульс — само наблюдение часто его немного замедляет.',
+      chest_tight: 'Сделай медленный выдох длиннее вдоха несколько раз — это расслабляет грудную клетку.',
+      throat_lump: 'Попробуй несколько раз зевнуть или мягко покашлять — это снимает спазм в горле.',
+      shoulder_tension: 'Подними плечи к ушам на вдохе и резко опусти на выдохе, повтори 3 раза.',
+      hand_tremor: 'Сожми кулаки на 5 секунд и отпусти — повтори несколько раз.',
+      sweaty_palms: 'Приложи ладони к прохладной поверхности на несколько секунд.',
+      dizziness: 'Сфокусируй взгляд на одной неподвижной точке и медленно подыши.',
+      shallow_breath: 'Положи руку на живот и дыши так, чтобы двигалась именно рука на животе.',
+      rapid_breathing: 'Замедли выдох — выдыхай в два раза дольше, чем вдыхаешь.',
+      nausea: 'Выпей немного воды маленькими глотками и посиди спокойно пару минут.',
+      stomach_knot: 'Положи тёплую ладонь на живот и сделай несколько медленных вдохов.',
+      leg_weakness: 'Если можешь — сядь и почувствуй опору стоп на полу.',
+      dry_mouth: 'Сделай несколько глотков воды маленькими порциями.',
+      numb_fingers: 'Потри ладони друг о друга и мягко сожми и разожми пальцы.',
+      hot_flash: 'Умой лицо прохладной водой или приложи к запястьям что-то прохладное.',
+      cold_chill: 'Разотри руки друг о друга и укутайся, если есть чем.',
+      temple_pulse: 'Слегка помассируй виски круговыми движениями.',
+      body_stiffness: 'Медленно потянись, напрягая и расслабляя разные группы мышц.',
+      inner_trembling: 'Прижми стопы к полу и почувствуй устойчивую опору под собой.',
+      restlessness: 'Если можешь — сделай несколько шагов или мягко подвигайся, это выход для энергии тревоги.'
+    };
+
+    function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+    var weeklyNotesLow = [
+      'Похоже, эта неделя была спокойнее — обрати внимание, что именно помогло, и постарайся сохранить эти привычки.',
+      'Хороший знак, что тревога на этой неделе была ниже. Заметь, что в твоей жизни сейчас работает в твою пользу.',
+      'Спокойная неделя — это тоже результат, даже если кажется, что ничего особенного не происходило.'
+    ];
+    var weeklyNotesMid = [
+      'Неделя была смешанной — были и трудные, и более спокойные моменты. Это обычная динамика, а не сбой.',
+      'Тревога колебалась в течение недели — попробуй заметить, в какие дни и ситуации она поднималась больше.',
+      'Ты продолжаешь замечать своё состояние, и это уже полезная привычка, даже когда неделя была неровной.'
+    ];
+    var weeklyNotesHigh = [
+      'Эта неделя была тревожной. Это не значит, что что-то идёт не так — возможно, стоит немного снизить нагрузку и чаще возвращаться к дыхательным техникам.',
+      'Похоже, тебе было непросто на этой неделе. Будь к себе бережнее и, если есть возможность, обратись за поддержкой к близким или специалисту.',
+      'Высокий уровень тревоги за неделю — сигнал позаботиться о себе внимательнее: сон, отдых, паузы в течение дня.'
+    ];
+    function weeklyConclusion(anx, energy, sleep){
+      var pool = anx < 34 ? weeklyNotesLow : (anx < 67 ? weeklyNotesMid : weeklyNotesHigh);
+      var note = pick(pool);
+      if(energy < 34){ note += ' Энергия на этой неделе была низкой — попробуй найти немного времени на отдых.'; }
+      if(sleep < 34){ note += ' Сон был не лучшим — качество сна сильно влияет на тревогу.'; }
+      return note;
+    }
+
+    function renderSupport(){
+      var anxSlider = document.getElementById('slider_anx');
+      var anxLevel = anxSlider ? parseInt(anxSlider.value,10) : 50;
+      var thoughtEl = document.querySelector('#thoughtOptions input[name="thought"]:checked');
+      var thoughtKey = thoughtEl ? thoughtEl.value : 'badGeneral';
+      var quoteSet = anxLevel < 34 ? quotesLow : (anxLevel < 67 ? quotesMid : quotesHigh);
+      var quote = pick(quoteSet);
+      var advice = advicePlain[thoughtKey] || advicePlain.badGeneral;
+      var badgeText = 'Уровень тревоги: ' + anxLevel + '%';
+
+      var resultCard = document.getElementById('resultCard');
+      if(resultCard) resultCard.style.display = 'block';
+      var resultBadge = document.getElementById('resultBadge');
+      if(resultBadge) resultBadge.textContent = badgeText;
+      var resultQuote = document.getElementById('resultQuote');
+      if(resultQuote) resultQuote.textContent = quote;
+      var resultAdvice = document.getElementById('resultAdvice');
+      if(resultAdvice) resultAdvice.textContent = advice;
+
+      var chipsSelected = store.fields.__bodyChips || [];
+      var resultFoot = document.getElementById('resultFoot');
+      if(resultFoot){
+        var tips = chipsSelected.slice(0,2).map(function(c){ return bodyTips[c]; }).filter(Boolean);
+        resultFoot.textContent = tips.join(' ');
+      }
+
+      if(resultCard) resultCard.scrollIntoView({behavior:'smooth', block:'nearest'});
+      saveDailyEntry(anxLevel, thoughtKey, chipsSelected);
+    }
+
+    var getSupportBtn = document.getElementById('getSupportBtn');
+    if(getSupportBtn) getSupportBtn.addEventListener('click', renderSupport);
+    var anotherSupportBtn = document.getElementById('anotherSupportBtn');
+    if(anotherSupportBtn) anotherSupportBtn.addEventListener('click', renderSupport);
+    var goBreatheBtn = document.getElementById('goBreatheBtn');
+    if(goBreatheBtn) goBreatheBtn.addEventListener('click', function(){
+      var s7 = document.getElementById('s7');
+      if(s7) s7.scrollIntoView({behavior:'smooth'});
+    });
+
+    function pad(n){ return n < 10 ? '0'+n : ''+n; }
+    function todayKey(){
+      var d = new Date();
+      return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    }
+    var monthsRu = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+    function formatDateRu(key){
+      var parts = key.split('-');
+      var y = parseInt(parts[0],10), m = parseInt(parts[1],10), d = parseInt(parts[2],10);
+      return d + ' ' + monthsRu[m-1] + ' ' + y;
+    }
+
+    function saveDailyEntry(anxLevel, thoughtKey, chips){
+      var key = todayKey();
+      var entry = {
+        date: key,
+        anxLevel: anxLevel,
+        thought: thoughtKey,
+        thoughtLabel: thoughtLabels[thoughtKey] || thoughtKey,
+        chips: chips.slice(),
+        time: new Date().toISOString()
+      };
+      var existingIdx = -1;
+      for(var i=0;i<store.dailyEntries.length;i++){ if(store.dailyEntries[i].date === key){ existingIdx = i; break; } }
+      if(existingIdx !== -1){ store.dailyEntries[existingIdx] = entry; }
+      else { store.dailyEntries.push(entry); }
+      store.dailyEntries.sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+      persist();
+      renderHistory();
+    }
+
+    function renderHistory(){
+      var list = document.getElementById('historyList');
+      var empty = document.getElementById('historyEmpty');
+      if(!list || !empty) return;
+      list.innerHTML = '';
+      if(!store.dailyEntries.length){ empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      store.dailyEntries.forEach(function(entry){
+        var details = document.createElement('details');
+        details.className = 'history-item';
+        var summary = document.createElement('summary');
+        var dateSpan = document.createElement('span');
+        dateSpan.className = 'hist-date';
+        dateSpan.textContent = formatDateRu(entry.date);
+        var badgeSpan = document.createElement('span');
+        badgeSpan.className = 'hist-badge';
+        badgeSpan.textContent = 'Тревога ' + entry.anxLevel + '%';
+        summary.appendChild(dateSpan);
+        summary.appendChild(badgeSpan);
+        details.appendChild(summary);
+        var body = document.createElement('div');
+        body.className = 'hist-body';
+        var pThought = document.createElement('p');
+        pThought.textContent = 'Мысль: ' + (entry.thoughtLabel || entry.thought);
+        body.appendChild(pThought);
+        if(entry.chips && entry.chips.length){
+          var pChips = document.createElement('p');
+          pChips.textContent = 'Тело: ' + entry.chips.join(', ');
+          body.appendChild(pChips);
+        }
+        details.appendChild(body);
+        list.appendChild(details);
+      });
+    }
+
+    function mondayOf(d){
+      var date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      var day = date.getDay();
+      var diff = (day === 0 ? -6 : 1) - day;
+      date.setDate(date.getDate() + diff);
+      return date;
+    }
+    function weekKeyOf(d){
+      var m = mondayOf(d);
+      return m.getFullYear()+'-'+pad(m.getMonth()+1)+'-'+pad(m.getDate());
+    }
+
+    var saveWeekBtn = document.getElementById('saveWeekBtn');
+    if(saveWeekBtn) saveWeekBtn.addEventListener('click', function(){
+      var key = weekKeyOf(new Date());
+      var anxEl = document.getElementById('slider_week_anx');
+      var energyEl = document.getElementById('slider_week_energy');
+      var sleepEl = document.getElementById('slider_week_sleep');
+      var hardEl = document.getElementById('f_week_hard');
+      var helpedEl = document.getElementById('f_week_helped');
+      var triggerEl = document.getElementById('f_week_trigger');
+      var thoughtWeekEl = document.getElementById('f_week_thought');
+      var careEl = document.getElementById('f_week_care');
+      var selfmsgEl = document.getElementById('f_week_selfmessage');
+      var anxVal = anxEl ? parseInt(anxEl.value,10) : 50;
+      var energyVal = energyEl ? parseInt(energyEl.value,10) : 50;
+      var sleepVal = sleepEl ? parseInt(sleepEl.value,10) : 50;
+      var note = weeklyConclusion(anxVal, energyVal, sleepVal);
+      var entry = {
+        week: key,
+        anx: anxVal,
+        energy: energyVal,
+        sleep: sleepVal,
+        hard: hardEl ? hardEl.value : '',
+        helped: helpedEl ? helpedEl.value : '',
+        trigger: triggerEl ? triggerEl.value : '',
+        thought: thoughtWeekEl ? thoughtWeekEl.value : '',
+        care: careEl ? careEl.value : '',
+        selfMessage: selfmsgEl ? selfmsgEl.value : '',
+        note: note,
+        time: new Date().toISOString()
+      };
+      var existingIdx = -1;
+      for(var i=0;i<store.weeklyEntries.length;i++){ if(store.weeklyEntries[i].week === key){ existingIdx = i; break; } }
+      if(existingIdx !== -1){ store.weeklyEntries[existingIdx] = entry; }
+      else { store.weeklyEntries.push(entry); }
+      store.weeklyEntries.sort(function(a,b){ return a.week < b.week ? 1 : -1; });
+      persist();
+      var status = document.getElementById('weekSaveStatus');
+      if(status) status.textContent = 'Сохранено: неделя от ' + formatDateRu(key);
+      var wCard = document.getElementById('weeklyResultCard');
+      var wBadge = document.getElementById('weeklyResultBadge');
+      var wNote = document.getElementById('weeklyResultNote');
+      if(wCard) wCard.style.display = 'block';
+      if(wBadge) wBadge.textContent = 'Итог недели от ' + formatDateRu(key);
+      if(wNote) wNote.textContent = note;
+      if(wCard) wCard.scrollIntoView({behavior:'smooth', block:'nearest'});
+      renderWeeklyHistory();
+    });
+
+    function bar(val){
+      return '<div class="week-bar-wrap"><div class="week-bar" style="width:'+val+'%;"></div></div>';
+    }
+
+    function renderWeeklyHistory(){
+      var list = document.getElementById('weeklyList');
+      var empty = document.getElementById('weeklyEmpty');
+      if(!list || !empty) return;
+      list.innerHTML = '';
+      if(!store.weeklyEntries.length){ empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      store.weeklyEntries.forEach(function(entry){
+        var wrap = document.createElement('div');
+        wrap.className = 'history-item';
+        var title = document.createElement('div');
+        title.style.marginBottom = '10px';
+        title.innerHTML = '<b>Неделя от ' + formatDateRu(entry.week) + '</b>';
+        wrap.appendChild(title);
+        var rowsHtml = '';
+        rowsHtml += '<div class="week-row"><span class="week-label">Тревога</span>' + bar(entry.anx) + '<span class="week-val">'+entry.anx+'%</span></div>';
+        rowsHtml += '<div class="week-row"><span class="week-label">Энергия</span>' + bar(entry.energy) + '<span class="week-val">'+entry.energy+'%</span></div>';
+        rowsHtml += '<div class="week-row"><span class="week-label">Сон</span>' + bar(entry.sleep) + '<span class="week-val">'+entry.sleep+'%</span></div>';
+        var rowsDiv = document.createElement('div');
+        rowsDiv.innerHTML = rowsHtml;
+        wrap.appendChild(rowsDiv);
+        if(entry.hard){
+          var pHard = document.createElement('p');
+          pHard.style.marginTop = '10px';
+          pHard.style.fontSize = '13px';
+          pHard.textContent = 'Сложно было: ' + entry.hard;
+          wrap.appendChild(pHard);
+        }
+        if(entry.helped){
+          var pHelped = document.createElement('p');
+          pHelped.style.fontSize = '13px';
+          pHelped.textContent = 'Помогло: ' + entry.helped;
+          wrap.appendChild(pHelped);
+        }
+        if(entry.trigger){
+          var pTrigger = document.createElement('p');
+          pTrigger.style.fontSize = '13px';
+          pTrigger.textContent = 'Чаще вызывало тревогу: ' + entry.trigger;
+          wrap.appendChild(pTrigger);
+        }
+        if(entry.thought){
+          var pThoughtWeek = document.createElement('p');
+          pThoughtWeek.style.fontSize = '13px';
+          pThoughtWeek.textContent = 'Повторяющаяся мысль: ' + entry.thought;
+          wrap.appendChild(pThoughtWeek);
+        }
+        if(entry.care){
+          var pCare = document.createElement('p');
+          pCare.style.fontSize = '13px';
+          pCare.textContent = 'Забота о себе: ' + entry.care;
+          wrap.appendChild(pCare);
+        }
+        if(entry.selfMessage){
+          var pSelfMsg = document.createElement('p');
+          pSelfMsg.style.fontSize = '13px';
+          pSelfMsg.textContent = 'Сообщение себе на будущее: ' + entry.selfMessage;
+          wrap.appendChild(pSelfMsg);
+        }
+        if(entry.note){
+          var pNote = document.createElement('p');
+          pNote.style.fontSize = '13.5px';
+          pNote.style.fontStyle = 'italic';
+          pNote.style.marginTop = '10px';
+          pNote.style.color = '#7D7263';
+          pNote.textContent = 'Вывод: ' + entry.note;
+          wrap.appendChild(pNote);
+        }
+        list.appendChild(wrap);
+      });
+    }
+
+    function saveGratitudeEntry(){
+      var key = todayKey();
+      var entry = {
+        date: key,
+        thanks: (document.getElementById('f_grat_thanks')||{}).value || '',
+        who: (document.getElementById('f_grat_who')||{}).value || '',
+        self: (document.getElementById('f_grat_self')||{}).value || '',
+        others: (document.getElementById('f_grat_others')||{}).value || '',
+        liked: (document.getElementById('f_grat_liked')||{}).value || '',
+        time: new Date().toISOString()
+      };
+      var existingIdx = -1;
+      for(var i=0;i<store.gratitudeEntries.length;i++){ if(store.gratitudeEntries[i].date === key){ existingIdx = i; break; } }
+      if(existingIdx !== -1){ store.gratitudeEntries[existingIdx] = entry; }
+      else { store.gratitudeEntries.push(entry); }
+      store.gratitudeEntries.sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+      persist();
+      var status = document.getElementById('gratitudeSaveStatus');
+      if(status) status.textContent = 'Сохранено: ' + formatDateRu(key);
+      renderGratitudeHistory();
+    }
+
+    var saveGratitudeBtn = document.getElementById('saveGratitudeBtn');
+    if(saveGratitudeBtn) saveGratitudeBtn.addEventListener('click', saveGratitudeEntry);
+
+    function renderGratitudeHistory(){
+      var list = document.getElementById('gratitudeList');
+      var empty = document.getElementById('gratitudeEmpty');
+      if(!list || !empty) return;
+      list.innerHTML = '';
+      if(!store.gratitudeEntries.length){ empty.style.display = 'block'; return; }
+      empty.style.display = 'none';
+      store.gratitudeEntries.forEach(function(entry){
+        var details = document.createElement('details');
+        details.className = 'history-item';
+        var summary = document.createElement('summary');
+        var dateSpan = document.createElement('span');
+        dateSpan.className = 'hist-date';
+        dateSpan.textContent = formatDateRu(entry.date);
+        var badgeSpan = document.createElement('span');
+        badgeSpan.className = 'hist-badge';
+        badgeSpan.textContent = 'Благодарность';
+        summary.appendChild(dateSpan);
+        summary.appendChild(badgeSpan);
+        details.appendChild(summary);
+        var body = document.createElement('div');
+        body.className = 'hist-body';
+        var rows = [
+          ['Благодарен(на) за', entry.thanks],
+          ['Благодарю', entry.who],
+          ['Сделано хорошего для себя', entry.self],
+          ['Сделано хорошего для других', entry.others],
+          ['Понравилось за день', entry.liked]
+        ];
+        rows.forEach(function(r){
+          if(r[1]){
+            var p = document.createElement('p');
+            p.textContent = r[0] + ': ' + r[1];
+            body.appendChild(p);
+          }
+        });
+        details.appendChild(body);
+        list.appendChild(details);
+      });
+    }
+
+    renderHistory();
+    renderWeeklyHistory();
+    renderGratitudeHistory();
+  }
+})();
+</script>
+</body>
+</html>
